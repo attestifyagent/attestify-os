@@ -1,4 +1,3 @@
-```json
 {
   "name": "attestify-os",
   "version": "0.1.0",
@@ -11,7 +10,6 @@
   "dependencies": {
     "next": "15.0.0",
     "react": "19.0.0-rc",
-    "react-dom": "19.0.0-rc",
-    "@vercel/x402": "latest"
+    "react-dom": "19.0.0-rc"
   }
 }
