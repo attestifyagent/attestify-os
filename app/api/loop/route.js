@@ -1,26 +1,39 @@
 import { NextResponse } from 'next/server';
+import { createPaymentHandler } from '@x402/next';   // New import
+
+// Your payment config
+const paymentHandler = createPaymentHandler({
+  payee: "0x8A9F22f8e8C9B9699e5DDd0B999C0EbA3245b25F", // Your seller wallet
+  price: 0.005,  // $0.005 USDC
+  network: 'base',
+  description: 'Attestify OS Full Memory-First Loop',
+});
 
 export async function POST(request) {
+  // First, handle payment
+  const paymentResult = await paymentHandler(request);
+  if (!paymentResult.success) {
+    return NextResponse.json(paymentResult.error, { 
+      status: paymentResult.status || 402 
+    });
+  }
+
   try {
     const body = await request.json();
-    
     const { session_id, input, proposed_actions = [] } = body;
 
     if (!session_id || !input) {
-      return NextResponse.json({ 
-        error: "Missing session_id or input" 
-      }, { status: 400 });
+      return NextResponse.json({ error: "Missing session_id or input" }, { status: 400 });
     }
 
-    // Placeholder for full loop
     const loopResult = {
-      status: "loop_started",
+      status: "success",
+      paid: true,
       session_id,
-      memory_context: "No memory yet - coming soon", // ← We'll add real memory here next
-      cost_estimate: "0.004 USDC",                   // ← Cost control stub
-      safe_actions: proposed_actions,                // ← Sandbox stub
-      orchestration: null,                           // ← Orchestration stub
-      message: "✅ Memory-first full loop is active. Next: Add x402 payment + persistent memory.",
+      memory_context: "Memory stub — coming next",
+      cost_estimate: "0.004 USDC",
+      safe_actions: proposed_actions,
+      message: "✅ x402 payment received + Full loop executed!",
       loop_id: "loop-" + Date.now(),
       timestamp: new Date().toISOString()
     };
@@ -28,8 +41,8 @@ export async function POST(request) {
     return NextResponse.json(loopResult);
   } catch (error) {
     return NextResponse.json({ 
-      error: "Invalid request",
+      error: "Server error", 
       message: error.message 
-    }, { status: 400 });
+    }, { status: 500 });
   }
 }
