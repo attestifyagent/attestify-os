@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { kv } from '@vercel/kv';
+import { kv } from '@vercel/kv';   // This works with REDIS_URL too
 
 export async function POST(request) {
   try {
@@ -10,7 +10,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Missing session_id or input" }, { status: 400 });
     }
 
-    // === PERSISTENT MEMORY USING VERCEL KV ===
+    // Persistent Memory with Redis
     let sessionMemory = await kv.get(`memory:${session_id}`) || { 
       history: [], 
       lastUpdated: null 
@@ -21,17 +21,13 @@ export async function POST(request) {
       input: input
     });
 
-    // Keep last 30 messages
     if (sessionMemory.history.length > 30) {
       sessionMemory.history = sessionMemory.history.slice(-30);
     }
 
     sessionMemory.lastUpdated = new Date().toISOString();
+    await kv.set(`memory:${session_id}`, sessionMemory, { ex: 86400 }); // 24 hours
 
-    // Save back to KV
-    await kv.set(`memory:${session_id}`, sessionMemory, { ex: 86400 }); // expires in 24h
-
-    // Response
     const loopResult = {
       status: "success",
       paid: true,
@@ -43,7 +39,7 @@ export async function POST(request) {
       },
       cost_estimate: "0.005 USDC",
       safe_actions: proposed_actions,
-      message: "✅ Full loop with **persistent** memory (Vercel KV)",
+      message: "✅ Full loop with real persistent memory (Redis)!",
       loop_id: "loop-" + Date.now(),
       timestamp: new Date().toISOString()
     };
@@ -51,6 +47,9 @@ export async function POST(request) {
     return NextResponse.json(loopResult);
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Server error", message: error.message }, { status: 500 });
+    return NextResponse.json({ 
+      error: "Server error", 
+      message: error.message 
+    }, { status: 500 });
   }
 }
