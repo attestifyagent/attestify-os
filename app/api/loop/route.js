@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-
-const memoryStore = new Map();
+import { kv } from '@vercel/kv';
 
 export async function POST(request) {
   try {
@@ -11,34 +10,40 @@ export async function POST(request) {
       return NextResponse.json({ error: "Missing session_id or input" }, { status: 400 });
     }
 
-    // Persistent Memory Logic
-    let sessionMemory = memoryStore.get(session_id) || { history: [], lastUpdated: null };
-    
+    // === PERSISTENT MEMORY USING VERCEL KV ===
+    let sessionMemory = await kv.get(`memory:${session_id}`) || { 
+      history: [], 
+      lastUpdated: null 
+    };
+
     sessionMemory.history.push({
       timestamp: new Date().toISOString(),
       input: input
     });
 
-    if (sessionMemory.history.length > 20) {
-      sessionMemory.history = sessionMemory.history.slice(-20);
+    // Keep last 30 messages
+    if (sessionMemory.history.length > 30) {
+      sessionMemory.history = sessionMemory.history.slice(-30);
     }
 
     sessionMemory.lastUpdated = new Date().toISOString();
-    memoryStore.set(session_id, sessionMemory);
 
-    // Response with clear memory output
+    // Save back to KV
+    await kv.set(`memory:${session_id}`, sessionMemory, { ex: 86400 }); // expires in 24h
+
+    // Response
     const loopResult = {
       status: "success",
       paid: true,
       session_id,
       memory_context: {
-        recent_history: sessionMemory.history.slice(-3),   // Last 3 messages
+        recent_history: sessionMemory.history.slice(-4),
         total_messages: sessionMemory.history.length,
         last_updated: sessionMemory.lastUpdated
       },
       cost_estimate: "0.005 USDC",
       safe_actions: proposed_actions,
-      message: "✅ Full loop executed with persistent memory!",
+      message: "✅ Full loop with **persistent** memory (Vercel KV)",
       loop_id: "loop-" + Date.now(),
       timestamp: new Date().toISOString()
     };
