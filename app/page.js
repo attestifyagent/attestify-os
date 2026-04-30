@@ -1,54 +1,67 @@
-import Link from 'next/link';
-
 export default function Home() {
   return (
     <div style={{ 
-      padding: '40px', 
-      fontFamily: 'system-ui, sans-serif', 
-      maxWidth: '800px', 
-      margin: '0 auto' 
+      padding: '60px 20px', 
+      fontFamily: 'system-ui, -apple-system, sans-serif', 
+      maxWidth: '900px', 
+      margin: '0 auto',
+      lineHeight: '1.6'
     }}>
-      <h1 style={{ fontSize: '3rem', marginBottom: '10px' }}>
-        Attestify OS
-      </h1>
-      <p style={{ fontSize: '1.4rem', color: '#666', marginBottom: '40px' }}>
-        Unified x402 Agent Operating System
-      </p>
+      <div style={{ textAlign: 'center', marginBottom: '50px' }}>
+        <h1 style={{ fontSize: '3.5rem', margin: '0 0 16px 0', background: 'linear-gradient(90deg, #00ff9f, #00b4ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          Attestify OS
+        </h1>
+        <p style={{ fontSize: '1.5rem', color: '#888', maxWidth: '600px', margin: '0 auto' }}>
+          Memory-First Full Loop for Production Agents
+        </p>
+      </div>
 
-      <div style={{ background: '#111', padding: '30px', borderRadius: '12px', marginBottom: '30px' }}>
-        <h2>Memory-First Full Loop</h2>
-        <p>One call handles:</p>
-        <ul>
-          <li>✅ Persistent Memory</li>
+      <div style={{ background: '#111', padding: '40px', borderRadius: '16px', marginBottom: '40px' }}>
+        <h2 style={{ marginTop: 0 }}>One API. Full Agent Loop.</h2>
+        <ul style={{ fontSize: '1.1rem', lineHeight: '2' }}>
+          <li>✅ Persistent Memory (Redis-backed)</li>
           <li>✅ Real-time Cost Control</li>
-          <li>✅ Secure Sandbox</li>
+          <li>✅ Secure Execution Sandbox</li>
           <li>✅ Multi-Agent Orchestration</li>
-          <li>✅ Attestify Verification</li>
+          <li>✅ x402 Payment Enforcement</li>
+          <li>✅ Attestify Verification Ready</li>
         </ul>
       </div>
 
       <h3>Quick Test</h3>
-      <pre style={{ background: '#000', padding: '20px', borderRadius: '8px', overflow: 'auto' }}>
+      <pre style={{ 
+        background: '#0a0a0a', 
+        padding: '20px', 
+        borderRadius: '12px', 
+        overflow: 'auto',
+        fontSize: '0.95rem'
+      }}>
 {`fetch('https://attestify-os.vercel.app/api/loop', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    session_id: "agent-123",
-    input: "Your query here..."
+    session_id: "your-agent-id",
+    input: "Your query or instruction here..."
   })
 }).then(r => r.json()).then(console.log);`}
       </pre>
 
-      <p style={{ marginTop: '30px' }}>
-        <strong>Built for production agents.</strong><br />
-        Powered by x402 • Base • Vercel
+      <p style={{ marginTop: '40px', textAlign: 'center' }}>
+        <strong>Built for LangGraph • CrewAI • Custom Agents</strong><br />
+        Powered by x402 • Base • Vercel KV
       </p>
 
-      <p>
-        <Link href="/api/loop" style={{ color: '#00ff9f' }}>
-          → Test the API directly
-        </Link>
-      </p>
+      <div style={{ textAlign: 'center', marginTop: '50px' }}>
+        <a href="https://github.com/attestifyagent/attestify-os" 
+           style={{ color: '#00ff9f', textDecoration: 'none', fontWeight: 'bold' }}>
+          → View on GitHub
+        </a>
+        {" | "}
+        <a href="https://attestify-full.vercel.app" 
+           style={{ color: '#00ff9f', textDecoration: 'none', fontWeight: 'bold' }}>
+          Attestify Verification →
+        </a>
+      </div>
     </div>
   );
 }
