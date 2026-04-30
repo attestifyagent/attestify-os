@@ -1,5 +1,21 @@
 import { NextResponse } from 'next/server';
-import { kv } from '@vercel/kv';   // This works with REDIS_URL too
+import { createClient } from 'redis';
+
+const redis = createClient({
+  url: process.env.REDIS_URL
+});
+
+redis.on('error', err => console.error('Redis Client Error', err));
+
+let isConnected = false;
+
+async function getRedisClient() {
+  if (!isConnected) {
+    await redis.connect();
+    isConnected = true;
+  }
+  return redis;
+}
 
 export async function POST(request) {
   try {
@@ -10,11 +26,11 @@ export async function POST(request) {
       return NextResponse.json({ error: "Missing session_id or input" }, { status: 400 });
     }
 
-    // Persistent Memory with Redis
-    let sessionMemory = await kv.get(`memory:${session_id}`) || { 
-      history: [], 
-      lastUpdated: null 
-    };
+    const client = await getRedisClient();
+
+    // Persistent Memory
+    let sessionMemory = await client.get(`memory:${session_id}`);
+    sessionMemory = sessionMemory ? JSON.parse(sessionMemory) : { history: [], lastUpdated: null };
 
     sessionMemory.history.push({
       timestamp: new Date().toISOString(),
@@ -26,7 +42,8 @@ export async function POST(request) {
     }
 
     sessionMemory.lastUpdated = new Date().toISOString();
-    await kv.set(`memory:${session_id}`, sessionMemory, { ex: 86400 }); // 24 hours
+
+    await client.set(`memory:${session_id}`, JSON.stringify(sessionMemory), { EX: 86400 });
 
     const loopResult = {
       status: "success",
@@ -39,7 +56,7 @@ export async function POST(request) {
       },
       cost_estimate: "0.005 USDC",
       safe_actions: proposed_actions,
-      message: "✅ Full loop with real persistent memory (Redis)!",
+      message: "✅ Full loop with real persistent Redis memory!",
       loop_id: "loop-" + Date.now(),
       timestamp: new Date().toISOString()
     };
