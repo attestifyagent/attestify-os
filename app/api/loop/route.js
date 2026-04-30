@@ -9,20 +9,27 @@ export async function POST(request) {
       return NextResponse.json({ error: "Missing session_id or input" }, { status: 400 });
     }
 
+    // TODO: x402 payment check will go here soon
+    // For now we simulate successful payment (we'll add real x402 next)
+
     const loopResult = {
       status: "success",
       paid: true,
       session_id,
-      memory_context: "Memory stub — persistent memory coming next step",
-      cost_estimate: "0.004 USDC",
+      memory_context: "✅ Memory stub active - persistent memory next!",
+      cost_estimate: "0.005 USDC",
       safe_actions: proposed_actions,
-      message: "✅ x402 payment received! Full loop executed.",
+      message: "Full loop executed (payment simulation active)",
       loop_id: "loop-" + Date.now(),
       timestamp: new Date().toISOString()
     };
 
     return NextResponse.json(loopResult);
   } catch (error) {
-    return NextResponse.json({ error: "Server error", message: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ 
+      error: "Server error", 
+      message: error.message 
+    }, { status: 500 });
   }
 }
