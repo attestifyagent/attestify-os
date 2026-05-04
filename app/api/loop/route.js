@@ -13,8 +13,11 @@ async function getRedisClient() {
   return redis;
 }
 
-// Call Grok 4.1 Fast (cheapest capable model)
 async function callGrok(messages) {
+  if (!process.env.XAI_API_KEY) {
+    throw new Error("❌ XAI_API_KEY is missing in environment variables");
+  }
+
   const response = await fetch('https://api.x.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -22,7 +25,7 @@ async function callGrok(messages) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: "grok-4-1-fast-reasoning",   // ← Cheapest + good reasoning
+      model: "grok-4-1-fast-reasoning",   // cheap + good
       messages,
       temperature: 0.7,
       max_tokens: 600,
@@ -31,7 +34,7 @@ async function callGrok(messages) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`LLM error: ${response.status} - ${errorText}`);
+    throw new Error(`LLM Error ${response.status}: ${errorText}`);
   }
 
   const data = await response.json();
@@ -52,7 +55,6 @@ export async function POST(request) {
     let sessionMemory = await client.get(`memory:${session_id}`);
     sessionMemory = sessionMemory ? JSON.parse(sessionMemory) : { history: [], totalSpend: 0 };
 
-    // Add user message
     sessionMemory.history.push({
       role: "user",
       timestamp: new Date().toISOString(),
@@ -63,28 +65,19 @@ export async function POST(request) {
       sessionMemory.history = sessionMemory.history.slice(-50);
     }
 
-    // Build conversation for LLM
     const messages = [
-      {
-        role: "system",
-        content: system_prompt || "You are a helpful, concise agent on agentic.market. Keep responses under 150 words when possible."
-      },
-      ...sessionMemory.history.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }))
+      { role: "system", content: system_prompt || "You are a helpful, concise agent on agentic.market." },
+      ...sessionMemory.history.map(m => ({ role: m.role, content: m.content }))
     ];
 
-    // Call cheap Grok model
-    let output;
+    let output = "LLM call failed";
     try {
       output = await callGrok(messages);
-    } catch (llmError) {
-      console.error("LLM failed:", llmError);
-      output = "✅ Loop executed. Memory is working (LLM temporarily unavailable).";
+    } catch (e) {
+      console.error("LLM Error:", e.message);
+      output = `Error: ${e.message}`;
     }
 
-    // Save assistant response
     sessionMemory.history.push({
       role: "assistant",
       timestamp: new Date().toISOString(),
@@ -102,12 +95,9 @@ export async function POST(request) {
       memory_context: {
         recent_history: sessionMemory.history.slice(-8),
         total_messages: sessionMemory.history.length,
-        total_spend: sessionMemory.totalSpend
       },
       output,
-      cost_estimate: "0.005 USDC",
-      loop_id: `loop-${Date.now()}`,
-      timestamp: new Date().toISOString()
+      cost_estimate: "0.005 USDC"
     });
 
   } catch (error) {
