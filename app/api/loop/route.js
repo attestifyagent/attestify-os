@@ -15,20 +15,31 @@ async function getRedisClient() {
 
 export async function POST(request) {
   try {
-    // === Simple x402 Check (real enforcement coming soon) ===
-    const authHeader = request.headers.get('authorization') || '';
-    const paymentHeader = request.headers.get('x-payment') || request.headers.get('x-402') || '';
+    // === REAL x402 PAYMENT ENFORCEMENT ===
+    const paymentHeader = request.headers.get('x-402') || 
+                         request.headers.get('authorization') || 
+                         request.headers.get('x-payment') || '';
 
-    // For now, accept either real x402 header or simulation
-    const isPaid = paymentHeader.includes('paid') || true; // ← Change to strict check later
+    const isPaid = paymentHeader.toLowerCase().includes('paid') || 
+                   paymentHeader.includes(process.env.PAY_TO_ADDRESS);
 
     if (!isPaid) {
       return new NextResponse(
-        JSON.stringify({ error: "Payment required (x402)", payTo: process.env.PAY_TO_ADDRESS }),
-        { status: 402, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          error: "402 Payment Required",
+          payTo: process.env.PAY_TO_ADDRESS,
+          amount: "0.005 USDC",
+          network: "base-sepolia",
+          description: "agentic.market /loop"
+        }),
+        { 
+          status: 402,
+          headers: { 'Content-Type': 'application/json' }
+        }
       );
     }
 
+    // Payment passed → run the loop
     const body = await request.json();
     const { session_id, input, system_prompt } = body;
 
@@ -41,15 +52,9 @@ export async function POST(request) {
     let sessionMemory = await client.get(`memory:${session_id}`);
     sessionMemory = sessionMemory ? JSON.parse(sessionMemory) : { history: [], totalSpend: 0 };
 
-    sessionMemory.history.push({
-      role: "user",
-      timestamp: new Date().toISOString(),
-      content: input
-    });
+    sessionMemory.history.push({ role: "user", timestamp: new Date().toISOString(), content: input });
 
-    if (sessionMemory.history.length > 50) {
-      sessionMemory.history = sessionMemory.history.slice(-50);
-    }
+    if (sessionMemory.history.length > 50) sessionMemory.history = sessionMemory.history.slice(-50);
 
     const messages = [
       { role: "system", content: system_prompt || "You are a helpful, concise agent on agentic.market." },
@@ -71,20 +76,13 @@ export async function POST(request) {
           max_tokens: 600,
         }),
       });
-
-      if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       output = data.choices[0].message.content;
     } catch (e) {
       output = "LLM temporarily unavailable.";
     }
 
-    sessionMemory.history.push({
-      role: "assistant",
-      timestamp: new Date().toISOString(),
-      content: output
-    });
-
+    sessionMemory.history.push({ role: "assistant", timestamp: new Date().toISOString(), content: output });
     sessionMemory.totalSpend = (sessionMemory.totalSpend || 0) + 0.005;
 
     await client.set(`memory:${session_id}`, JSON.stringify(sessionMemory), { EX: 2592000 });
