@@ -1,7 +1,8 @@
 // app/api/loop/route.js
 import { NextResponse } from 'next/server';
 import { createClient } from 'redis';
-import { createX402Handler } from '@x402/core';   // or adjust import based on actual package
+import { createX402Handler } from '@x402/core';
+import { ExactEvmScheme } from '@x402/evm/exact';
 
 const redis = createClient({ url: process.env.REDIS_URL });
 let isConnected = false;
@@ -14,23 +15,29 @@ async function getRedisClient() {
   return redis;
 }
 
-// x402 Payment Handler
+// x402 Payment Handler Setup
 const x402 = createX402Handler({
+  schemes: [
+    new ExactEvmScheme({
+      chainId: 84532, // Base Sepolia (use 8453 for Base mainnet later)
+    }),
+  ],
   payTo: process.env.PAY_TO_ADDRESS,
-  chain: "base-sepolia",           // Use "base" for mainnet later
-  amount: "0.005",
+  amount: "0.005",        // in smallest unit (USDC has 6 decimals → 0.005 = 5000)
   currency: "USDC",
-  description: "agentic.market /loop execution",
+  description: "agentic.market /loop - Memory-First Agent Execution",
 });
 
 export async function POST(request) {
   try {
-    // === PAYMENT ENFORCEMENT ===
-    const payment = await x402.verify(request);
-    if (!payment.paid) {
-      return payment.response;   // Returns HTTP 402 automatically
+    // === 1. ENFORCE x402 PAYMENT ===
+    const paymentResult = await x402.verify(request);
+
+    if (!paymentResult.paid) {
+      return paymentResult.response; // Automatically returns 402 with payment instructions
     }
 
+    // Payment successful → continue
     const body = await request.json();
     const { session_id, input } = body;
 
@@ -43,7 +50,7 @@ export async function POST(request) {
     let sessionMemory = await client.get(`memory:${session_id}`);
     sessionMemory = sessionMemory ? JSON.parse(sessionMemory) : { history: [], totalSpend: 0 };
 
-    // User message
+    // Store user input
     sessionMemory.history.push({
       role: "user",
       timestamp: new Date().toISOString(),
@@ -54,13 +61,13 @@ export async function POST(request) {
       sessionMemory.history = sessionMemory.history.slice(-50);
     }
 
-    // Agent response
+    // Agent execution
     const result = {
-      output: `✅ Paid loop executed. Memory now has ${sessionMemory.history.length} messages.`,
+      output: `✅ Paid loop executed successfully!\nMemory now contains ${sessionMemory.history.length} messages.`,
       cost: 0.005
     };
 
-    // Assistant message
+    // Store assistant response
     sessionMemory.history.push({
       role: "assistant",
       timestamp: new Date().toISOString(),
@@ -83,7 +90,8 @@ export async function POST(request) {
       output: result.output,
       cost_estimate: "0.005 USDC",
       loop_id: `loop-${Date.now()}`,
-      txHash: payment.txHash
+      timestamp: new Date().toISOString(),
+      txHash: paymentResult.txHash
     });
 
   } catch (error) {
