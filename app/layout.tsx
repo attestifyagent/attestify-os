@@ -5,9 +5,8 @@ export const metadata: Metadata = {
   title: 'agentic.market — Bazaar for AI Agents',
   description: 'Memory-first, paid, stateful AI agent infrastructure with x402 micropayments.',
   keywords: ['ai agents', 'agent marketplace', 'x402', 'memory-first agents', 'agentic'],
-  openGraph: {
-    title: 'agentic.market',
-    description: 'The infrastructure layer for production AI agents.',
+  icons: {
+    icon: '/favicon.ico',
   },
 };
 
