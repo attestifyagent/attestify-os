@@ -15,7 +15,7 @@ async function getRedisClient() {
 
 async function callGrok(messages) {
   if (!process.env.XAI_API_KEY) {
-    throw new Error("❌ XAI_API_KEY is missing in environment variables");
+    throw new Error("XAI_API_KEY is missing");
   }
 
   const response = await fetch('https://api.x.ai/v1/chat/completions', {
@@ -25,7 +25,7 @@ async function callGrok(messages) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: "grok-4-1-fast-reasoning",   // cheap + good
+      model: "grok-4-1-fast-reasoning",
       messages,
       temperature: 0.7,
       max_tokens: 600,
@@ -55,6 +55,7 @@ export async function POST(request) {
     let sessionMemory = await client.get(`memory:${session_id}`);
     sessionMemory = sessionMemory ? JSON.parse(sessionMemory) : { history: [], totalSpend: 0 };
 
+    // Add new user message
     sessionMemory.history.push({
       role: "user",
       timestamp: new Date().toISOString(),
@@ -65,19 +66,27 @@ export async function POST(request) {
       sessionMemory.history = sessionMemory.history.slice(-50);
     }
 
+    // Build messages safely (fix old entries without role)
     const messages = [
-      { role: "system", content: system_prompt || "You are a helpful, concise agent on agentic.market." },
-      ...sessionMemory.history.map(m => ({ role: m.role, content: m.content }))
+      { 
+        role: "system", 
+        content: system_prompt || "You are a helpful, concise agent on agentic.market." 
+      },
+      ...sessionMemory.history.map(msg => ({
+        role: msg.role || "user",           // ← Fix for old data
+        content: msg.content || msg.input || JSON.stringify(msg)
+      }))
     ];
 
-    let output = "LLM call failed";
+    let output;
     try {
       output = await callGrok(messages);
     } catch (e) {
       console.error("LLM Error:", e.message);
-      output = `Error: ${e.message}`;
+      output = `LLM Error: ${e.message}`;
     }
 
+    // Save assistant response
     sessionMemory.history.push({
       role: "assistant",
       timestamp: new Date().toISOString(),
