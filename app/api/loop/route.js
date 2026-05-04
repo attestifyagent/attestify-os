@@ -13,7 +13,6 @@ async function getRedisClient() {
   return redis;
 }
 
-// CORS Headers
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
@@ -28,13 +27,9 @@ export async function OPTIONS() {
 
 export async function POST(request) {
   try {
-    // === 1. x402 PAYMENT ENFORCEMENT ===
-    const paymentHeader = request.headers.get('x-402') || 
-                         request.headers.get('authorization') || 
-                         request.headers.get('x-payment') || '';
-
-    const isPaid = paymentHeader.toLowerCase().includes('paid') || 
-                   paymentHeader.includes(process.env.PAY_TO_ADDRESS || '');
+    // x402 Payment Enforcement
+    const paymentHeader = request.headers.get('x-402') || request.headers.get('authorization') || request.headers.get('x-payment') || '';
+    const isPaid = paymentHeader.toLowerCase().includes('paid') || paymentHeader.includes(process.env.PAY_TO_ADDRESS || '');
 
     if (!isPaid) {
       return NextResponse.json({
@@ -48,18 +43,20 @@ export async function POST(request) {
     }
 
     const body = await request.json();
+    
+    // === 2. Agent ID + System Prompt Support ===
     const { 
       session_id, 
       input, 
+      agent_id,           // ← New: Support for specific agent
       system_prompt,
-      proposed_actions = [] 
+      proposed_actions = [],   // ← New: Tool actions
+      parent_session,     // ← New: Multi-agent handoff
+      handoff_to          // ← New: Multi-agent handoff
     } = body;
 
     if (!session_id || !input?.trim()) {
-      return NextResponse.json({ error: "Missing session_id or input" }, { 
-        status: 400, 
-        headers: corsHeaders() 
-      });
+      return NextResponse.json({ error: "Missing session_id or input" }, { status: 400, headers: corsHeaders() });
     }
 
     const client = await getRedisClient();
@@ -68,16 +65,16 @@ export async function POST(request) {
     sessionMemory = sessionMemory ? JSON.parse(sessionMemory) : { 
       history: [], 
       totalSpend: 0, 
-      lastUsed: null 
+      lastUsed: null,
+      agent_id: agent_id,        // Store which agent is running
+      parent_session,
+      handoff_to
     };
 
-    // Rate Limiting (1 request per second per session)
+    // Rate limiting
     const now = Date.now();
     if (sessionMemory.lastUsed && now - new Date(sessionMemory.lastUsed).getTime() < 1000) {
-      return NextResponse.json({ error: "Rate limit exceeded. Try again in 1s." }, { 
-        status: 429, 
-        headers: corsHeaders() 
-      });
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429, headers: corsHeaders() });
     }
     sessionMemory.lastUsed = new Date().toISOString();
 
@@ -92,11 +89,11 @@ export async function POST(request) {
       sessionMemory.history = sessionMemory.history.slice(-50);
     }
 
-    // Build messages for LLM
+    // Build messages
     const messages = [
       { 
         role: "system", 
-        content: system_prompt || "You are a helpful, concise, and reliable agent on agentic.market." 
+        content: system_prompt || `You are a helpful agent on agentic.market${agent_id ? ` (Agent: ${agent_id})` : ''}.` 
       },
       ...sessionMemory.history.map(m => ({
         role: m.role || "user",
@@ -106,8 +103,6 @@ export async function POST(request) {
 
     // Call Grok
     let output = "LLM temporarily unavailable.";
-    let tokenUsage = { input: 0, output: 0 };
-
     try {
       const res = await fetch('https://api.x.ai/v1/chat/completions', {
         method: 'POST',
@@ -126,18 +121,15 @@ export async function POST(request) {
       if (res.ok) {
         const data = await res.json();
         output = data.choices[0].message.content;
-        tokenUsage = {
-          input: data.usage?.prompt_tokens || 0,
-          output: data.usage?.completion_tokens || 0
-        };
       }
     } catch (e) {
       console.error("LLM Error:", e.message);
     }
 
-    // Handle proposed actions (sandbox simulation)
+    // === 3. Proposed Actions / Sandbox Simulation ===
     if (proposed_actions.length > 0) {
-      output += `\n\n[Actions Simulated]: ${proposed_actions.length} actions executed safely.`;
+      console.log("Simulating actions:", proposed_actions);
+      output += `\n\n[Actions Simulated]: ${proposed_actions.length} safe actions executed (${proposed_actions.join(', ')}).`;
     }
 
     // Save assistant response
@@ -155,6 +147,7 @@ export async function POST(request) {
       status: "success",
       paid: true,
       session_id,
+      agent_id,
       memory_context: {
         recent_history: sessionMemory.history.slice(-8),
         total_messages: sessionMemory.history.length,
@@ -162,20 +155,15 @@ export async function POST(request) {
       },
       output,
       cost_estimate: "0.005 USDC",
-      token_usage: tokenUsage,
       actions_simulated: proposed_actions.length,
+      parent_session,
+      handoff_to,
       loop_id: `loop-${Date.now()}`,
       timestamp: new Date().toISOString()
     }, { headers: corsHeaders() });
 
   } catch (error) {
     console.error("Loop error:", error);
-    return NextResponse.json({ 
-      error: "Server error", 
-      message: error.message 
-    }, { 
-      status: 500, 
-      headers: corsHeaders() 
-    });
+    return NextResponse.json({ error: "Server error", message: error.message }, { status: 500, headers: corsHeaders() });
   }
 }
