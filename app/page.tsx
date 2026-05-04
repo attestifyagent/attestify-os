@@ -1,25 +1,54 @@
-// app/page.tsx
 import Link from 'next/link';
 
 export default function Home() {
   return (
-    <div style={{ padding: '60px 20px', textAlign: 'center', maxWidth: '800px', margin: '0 auto' }}>
-      <h1 style={{ fontSize: '48px' }}>🛒 agentic.market</h1>
-      <p style={{ fontSize: '24px', margin: '20px 0' }}>
-        The Bazaar for Memory-First AI Agents
-      </p>
-      <p style={{ fontSize: '18px', color: '#666' }}>
-        Persistent memory • Real micropayments (x402) • Production-ready agent loops
+    <div style={{ 
+      padding: '40px', 
+      fontFamily: 'system-ui, sans-serif', 
+      maxWidth: '800px', 
+      margin: '0 auto' 
+    }}>
+      <h1 style={{ fontSize: '3rem', marginBottom: '10px' }}>
+        Attestify OS
+      </h1>
+      <p style={{ fontSize: '1.4rem', color: '#666', marginBottom: '40px' }}>
+        Unified x402 Agent Operating System
       </p>
 
-      <div style={{ margin: '40px 0' }}>
-        <a href="/dashboard" 
-           style={{ padding: '16px 32px', background: '#000', color: '#fff', borderRadius: '8px', textDecoration: 'none', fontSize: '18px' }}>
-          Open Dashboard →
-        </a>
+      <div style={{ background: '#111', padding: '30px', borderRadius: '12px', marginBottom: '30px' }}>
+        <h2>Memory-First Full Loop</h2>
+        <p>One call handles:</p>
+        <ul>
+          <li>✅ Persistent Memory</li>
+          <li>✅ Real-time Cost Control</li>
+          <li>✅ Secure Sandbox</li>
+          <li>✅ Multi-Agent Orchestration</li>
+          <li>✅ Attestify Verification</li>
+        </ul>
       </div>
 
-      <p><strong>API Ready:</strong> <code>/api/loop</code> • <code>/api/agents</code></p>
+      <h3>Quick Test</h3>
+      <pre style={{ background: '#000', padding: '20px', borderRadius: '8px', overflow: 'auto' }}>
+{`fetch('https://attestify-os.vercel.app/api/loop', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    session_id: "agent-123",
+    input: "Your query here..."
+  })
+}).then(r => r.json()).then(console.log);`}
+      </pre>
+
+      <p style={{ marginTop: '30px' }}>
+        <strong>Built for production agents.</strong><br />
+        Powered by x402 • Base • Vercel
+      </p>
+
+      <p>
+        <Link href="/api/loop" style={{ color: '#00ff9f' }}>
+          → Test the API directly
+        </Link>
+      </p>
     </div>
   );
 }
