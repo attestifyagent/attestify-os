@@ -13,10 +13,34 @@ async function getRedisClient() {
   return redis;
 }
 
+// Call Grok (xAI)
+async function callGrok(messages) {
+  const response = await fetch('https://api.x.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.XAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: "grok-beta",           // or "grok-3" when available
+      messages,
+      temperature: 0.7,
+      max_tokens: 800,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`LLM error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { session_id, input } = body;
+    const { session_id, input, system_prompt } = body;
 
     if (!session_id || !input?.trim()) {
       return NextResponse.json({ error: "Missing session_id or input" }, { status: 400 });
@@ -28,7 +52,7 @@ export async function POST(request) {
     let sessionMemory = await client.get(`memory:${session_id}`);
     sessionMemory = sessionMemory ? JSON.parse(sessionMemory) : { history: [], totalSpend: 0 };
 
-    // User message
+    // Add user message
     sessionMemory.history.push({
       role: "user",
       timestamp: new Date().toISOString(),
@@ -39,20 +63,35 @@ export async function POST(request) {
       sessionMemory.history = sessionMemory.history.slice(-50);
     }
 
-    // Agent response
-    const result = {
-      output: `✅ Loop executed successfully!\nMemory now contains ${sessionMemory.history.length} messages.`,
-      cost: 0.005
-    };
+    // Build messages for LLM
+    const messages = [
+      {
+        role: "system",
+        content: system_prompt || "You are a helpful, concise, and reliable agent on agentic.market."
+      },
+      ...sessionMemory.history.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }))
+    ];
 
-    // Assistant response
+    // Call real LLM
+    let output;
+    try {
+      output = await callGrok(messages);
+    } catch (llmError) {
+      console.error("LLM failed:", llmError);
+      output = "✅ Loop executed (LLM temporarily unavailable). Memory is working.";
+    }
+
+    // Save assistant response
     sessionMemory.history.push({
       role: "assistant",
       timestamp: new Date().toISOString(),
-      content: result.output
+      content: output
     });
 
-    sessionMemory.totalSpend = (sessionMemory.totalSpend || 0) + result.cost;
+    sessionMemory.totalSpend = (sessionMemory.totalSpend || 0) + 0.005;
 
     await client.set(`memory:${session_id}`, JSON.stringify(sessionMemory), { EX: 2592000 });
 
@@ -65,11 +104,10 @@ export async function POST(request) {
         total_messages: sessionMemory.history.length,
         total_spend: sessionMemory.totalSpend
       },
-      output: result.output,
+      output,
       cost_estimate: "0.005 USDC",
       loop_id: `loop-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      note: "Real x402 payment enforcement coming in next update"
+      timestamp: new Date().toISOString()
     });
 
   } catch (error) {
