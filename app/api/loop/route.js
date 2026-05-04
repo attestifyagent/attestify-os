@@ -13,7 +13,7 @@ async function getRedisClient() {
   return redis;
 }
 
-// Call Grok (xAI)
+// Call Grok 4.1 Fast (cheapest capable model)
 async function callGrok(messages) {
   const response = await fetch('https://api.x.ai/v1/chat/completions', {
     method: 'POST',
@@ -22,15 +22,16 @@ async function callGrok(messages) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: "grok-beta",           // or "grok-3" when available
+      model: "grok-4-1-fast-reasoning",   // ← Cheapest + good reasoning
       messages,
       temperature: 0.7,
-      max_tokens: 800,
+      max_tokens: 600,
     }),
   });
 
   if (!response.ok) {
-    throw new Error(`LLM error: ${response.status}`);
+    const errorText = await response.text();
+    throw new Error(`LLM error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
@@ -48,7 +49,6 @@ export async function POST(request) {
 
     const client = await getRedisClient();
 
-    // Load memory
     let sessionMemory = await client.get(`memory:${session_id}`);
     sessionMemory = sessionMemory ? JSON.parse(sessionMemory) : { history: [], totalSpend: 0 };
 
@@ -63,11 +63,11 @@ export async function POST(request) {
       sessionMemory.history = sessionMemory.history.slice(-50);
     }
 
-    // Build messages for LLM
+    // Build conversation for LLM
     const messages = [
       {
         role: "system",
-        content: system_prompt || "You are a helpful, concise, and reliable agent on agentic.market."
+        content: system_prompt || "You are a helpful, concise agent on agentic.market. Keep responses under 150 words when possible."
       },
       ...sessionMemory.history.map(msg => ({
         role: msg.role,
@@ -75,13 +75,13 @@ export async function POST(request) {
       }))
     ];
 
-    // Call real LLM
+    // Call cheap Grok model
     let output;
     try {
       output = await callGrok(messages);
     } catch (llmError) {
       console.error("LLM failed:", llmError);
-      output = "✅ Loop executed (LLM temporarily unavailable). Memory is working.";
+      output = "✅ Loop executed. Memory is working (LLM temporarily unavailable).";
     }
 
     // Save assistant response
