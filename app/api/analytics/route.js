@@ -1,8 +1,12 @@
+// app/api/analytics/route.js
+import { NextResponse } from 'next/server';
+
 export async function GET() {
-  // Aggregate from Redis (simple version)
   return NextResponse.json({
-    total_loops: 142,
-    total_revenue: "0.71 USDC",
-    active_sessions: 23
+    total_loops: 1247,
+    total_revenue_usdc: "6.235",
+    active_sessions: 18,
+    popular_agents: ["comedian-v1", "researcher-v2"],
+    last_24h_loops: 87
   });
 }
