@@ -1,7 +1,7 @@
 // app/api/loop/route.js
 import { NextResponse } from 'next/server';
 import { createClient } from 'redis';
-import { paymentMiddleware } from '@x402/express';   // Official middleware
+import { paymentMiddleware } from '@x402/express';
 import { ExactEvmScheme } from '@x402/evm/exact/server';
 import { HTTPFacilitatorClient } from '@x402/core/server';
 import { x402ResourceServer } from '@x402/core/server';
@@ -17,15 +17,15 @@ async function getRedisClient() {
   return redis;
 }
 
-// x402 Setup (Testnet)
+// x402 Setup
 const facilitatorClient = new HTTPFacilitatorClient({
-  url: "https://x402.org/facilitator"   // Use CDP for production later
+  url: "https://x402.org/facilitator"
 });
 
 const server = new x402ResourceServer(facilitatorClient)
   .register("eip155:84532", new ExactEvmScheme()); // Base Sepolia
 
-// The actual handler (runs only after payment)
+// The actual handler (runs only after successful payment)
 async function loopHandler(request) {
   const body = await request.json();
   const { session_id, input, agent_id, system_prompt: userSystemPrompt, proposed_actions = [] } = body;
@@ -36,6 +36,7 @@ async function loopHandler(request) {
 
   const client = await getRedisClient();
 
+  // Load agent if provided
   let finalSystemPrompt = userSystemPrompt;
   if (agent_id && !finalSystemPrompt) {
     const agentData = await client.get(`agent:${agent_id}`);
@@ -46,7 +47,14 @@ async function loopHandler(request) {
   }
 
   let sessionMemory = await client.get(`memory:${session_id}`);
-  sessionMemory = sessionMemory ? JSON.parse(sessionMemory) : { history: [], totalSpend: 0 };
+  sessionMemory = sessionMemory ? JSON.parse(sessionMemory) : { history: [], totalSpend: 0, lastUsed: null };
+
+  // Rate limiting
+  const now = Date.now();
+  if (sessionMemory.lastUsed && now - new Date(sessionMemory.lastUsed).getTime() < 1000) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+  sessionMemory.lastUsed = new Date().toISOString();
 
   sessionMemory.history.push({ role: "user", timestamp: new Date().toISOString(), content: input });
   if (sessionMemory.history.length > 50) sessionMemory.history = sessionMemory.history.slice(-50);
@@ -76,7 +84,7 @@ async function loopHandler(request) {
       output = data.choices[0].message.content;
     }
   } catch (e) {
-    console.error(e);
+    console.error("LLM Error:", e.message);
   }
 
   if (proposed_actions.length > 0) {
@@ -95,7 +103,9 @@ async function loopHandler(request) {
     agent_id,
     output,
     cost_estimate: "0.005 USDC",
-    actions_simulated: proposed_actions.length
+    actions_simulated: proposed_actions.length,
+    loop_id: `loop-${Date.now()}`,
+    timestamp: new Date().toISOString()
   });
 }
 
@@ -111,9 +121,10 @@ export const POST = paymentMiddleware(
           payTo: process.env.PAY_TO_ADDRESS,
         },
       ],
-      description: "Memory-First Agent Execution Loop",
+      description: "Attestify OS Memory-First Agent Execution Loop",
       mimeType: "application/json",
     },
   },
-  server
+  server,
+  loopHandler   // Your handler
 );
