@@ -14,10 +14,10 @@ export default function Home() {
         ⚙️ Attestify OS
       </h1>
       <p style={{ fontSize: '28px', color: '#444', marginBottom: '40px' }}>
-        The Memory-First Infrastructure for Agentic.market
+        Memory-First Infrastructure for agentic.market
       </p>
       <p style={{ fontSize: '20px', color: '#666', maxWidth: '600px', margin: '0 auto 60px' }}>
-        Persistent memory • Real Grok intelligence • x402 micropayments • Production agent loops
+        Persistent memory • Real Grok intelligence • x402 micropayments • Production-ready agent loops
       </p>
 
       <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -54,7 +54,7 @@ export default function Home() {
       </div>
 
       <p style={{ marginTop: '80px', color: '#666' }}>
-        Built to power the <strong>agentic.market</strong> ecosystem
+        The open infrastructure layer powering <strong>agentic.market</strong>
       </p>
     </div>
   );
