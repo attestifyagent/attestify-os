@@ -27,7 +27,7 @@ export async function OPTIONS() {
 
 export async function POST(request) {
   try {
-    // === IMPROVED x402 ENFORCEMENT ===
+    // === UPGRADED x402 PAYMENT ENFORCEMENT ===
     const paymentHeader = request.headers.get('x-402') || 
                          request.headers.get('authorization') || 
                          request.headers.get('x-payment') || '';
@@ -35,7 +35,7 @@ export async function POST(request) {
     // Accept real x402 format or simulation
     const isPaid = paymentHeader && (
       paymentHeader.toLowerCase().includes('paid') || 
-      paymentHeader.includes('0x') // signature-like string
+      paymentHeader.includes('0x') // signature-like data
     );
 
     if (!isPaid) {
@@ -49,7 +49,7 @@ export async function POST(request) {
       }, { status: 402, headers: corsHeaders() });
     }
 
-    // Payment validated → continue
+    // Payment validated → run the agent loop
     const body = await request.json();
     const { session_id, input, agent_id, system_prompt: userSystemPrompt, proposed_actions = [] } = body;
 
@@ -59,6 +59,7 @@ export async function POST(request) {
 
     const client = await getRedisClient();
 
+    // Load agent if provided
     let finalSystemPrompt = userSystemPrompt;
     if (agent_id && !finalSystemPrompt) {
       const agentData = await client.get(`agent:${agent_id}`);
@@ -71,12 +72,14 @@ export async function POST(request) {
     let sessionMemory = await client.get(`memory:${session_id}`);
     sessionMemory = sessionMemory ? JSON.parse(sessionMemory) : { history: [], totalSpend: 0, lastUsed: null };
 
+    // Rate limiting
     const now = Date.now();
     if (sessionMemory.lastUsed && now - new Date(sessionMemory.lastUsed).getTime() < 1000) {
       return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429, headers: corsHeaders() });
     }
     sessionMemory.lastUsed = new Date().toISOString();
 
+    // User message
     sessionMemory.history.push({ role: "user", timestamp: new Date().toISOString(), content: input });
     if (sessionMemory.history.length > 50) sessionMemory.history = sessionMemory.history.slice(-50);
 
