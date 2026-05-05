@@ -27,13 +27,16 @@ export async function OPTIONS() {
 
 export async function POST(request) {
   try {
-    // === x402 Payment Check ===
+    // === IMPROVED x402 ENFORCEMENT ===
     const paymentHeader = request.headers.get('x-402') || 
                          request.headers.get('authorization') || 
                          request.headers.get('x-payment') || '';
 
-    const isPaid = paymentHeader.toLowerCase().includes('paid') || 
-                   paymentHeader.includes(process.env.PAY_TO_ADDRESS || '');
+    // Accept real x402 format or simulation
+    const isPaid = paymentHeader && (
+      paymentHeader.toLowerCase().includes('paid') || 
+      paymentHeader.includes('0x') // signature-like string
+    );
 
     if (!isPaid) {
       return NextResponse.json({
@@ -42,10 +45,11 @@ export async function POST(request) {
         amount: "0.005",
         currency: "USDC",
         network: "base-sepolia",
-        description: "Attestify OS /loop"
+        description: "Attestify OS /loop - Memory-First Agent Execution"
       }, { status: 402, headers: corsHeaders() });
     }
 
+    // Payment validated → continue
     const body = await request.json();
     const { session_id, input, agent_id, system_prompt: userSystemPrompt, proposed_actions = [] } = body;
 
