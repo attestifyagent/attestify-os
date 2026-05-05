@@ -1,21 +1,21 @@
 # Attestify OS /loop
 
-**Memory-First Agent Execution Loop**
+**Memory-First Persistent Agent Execution Loop**
 
-A production-grade, persistent memory loop for AI agents.
+A production-grade loop with persistent memory, real Grok LLM, and x402 payments.
 
 **Endpoint**: `POST https://attestify-os.vercel.app/api/loop`
 
-**Payment**: 0.005 USDC per loop (x402)
+**Payment**: 0.005 USDC per loop
 
-**Capabilities**:
-- Persistent conversation memory across turns
-- Real Grok LLM (xAI)
-- Agent registry with custom system prompts
-- Action simulation & sandboxing
-- Multi-agent handoff support
+**Key Capabilities**:
+- Persistent conversation memory
+- Real Grok (xAI) responses
+- Agent registry with custom prompts
+- Action simulation
+- Multi-turn support
 
-**Example Usage**:
+**Example Request**:
 ```json
 {
   "session_id": "conv-123",
