@@ -2,11 +2,14 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'agentic.market — Bazaar for AI Agents',
-  description: 'Memory-first, paid, stateful AI agent infrastructure with x402 micropayments.',
-  keywords: ['ai agents', 'agent marketplace', 'x402', 'memory-first agents', 'agentic'],
-  icons: {
-    icon: '/favicon.ico',
+  title: 'Attestify OS — Memory-First Agent Infrastructure',
+  description: 'Persistent memory, x402 payments, and production-ready agent loops. Powering agentic.market.',
+  keywords: ['ai agents', 'x402', 'memory-first agents', 'agent infrastructure', 'attestify', 'agentic market'],
+  authors: [{ name: 'Attestify' }],
+  openGraph: {
+    title: 'Attestify OS',
+    description: 'The open infrastructure for paid, stateful AI agents',
+    images: [{ url: 'https://attestify-os.vercel.app/og-image.png' }],
   },
 };
 
