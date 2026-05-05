@@ -2,55 +2,127 @@
 import { NextResponse } from 'next/server';
 import { createClient } from 'redis';
 
-const redis = createClient({ 
-  url: process.env.REDIS_URL 
-});
+const redis = createClient({ url: process.env.REDIS_URL });
+let isConnected = false;
+
+async function getRedisClient() {
+  if (!isConnected && process.env.REDIS_URL) {
+    await redis.connect();
+    isConnected = true;
+  }
+  return redis;
+}
+
+function corsHeaders() {
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-402, x-payment',
+  };
+}
+
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders() });
+}
 
 export async function POST(request) {
   try {
-    console.log("✅ Loop called");
-    console.log("REDIS_URL exists:", !!process.env.REDIS_URL);
-    console.log("XAI_API_KEY exists:", !!process.env.XAI_API_KEY);
-    console.log("PAY_TO_ADDRESS exists:", !!process.env.PAY_TO_ADDRESS);
+    // x402 check
+    const paymentHeader = request.headers.get('x-402') || request.headers.get('authorization') || request.headers.get('x-payment') || '';
+    const isPaid = paymentHeader.toLowerCase().includes('paid') || paymentHeader.includes(process.env.PAY_TO_ADDRESS || '');
 
-    const body = await request.json().catch(() => ({}));
-    console.log("Request body:", body);
-
-    const { session_id, input } = body;
-
-    if (!session_id || !input) {
-      return NextResponse.json({ error: "Missing session_id or input" }, { status: 400 });
+    if (!isPaid) {
+      return NextResponse.json({
+        error: "402 Payment Required",
+        payTo: process.env.PAY_TO_ADDRESS,
+        amount: "0.005 USDC",
+        network: "base-sepolia"
+      }, { status: 402, headers: corsHeaders() });
     }
 
-    // Test Redis connection
-    let redisStatus = "Not tested";
+    const body = await request.json();
+    const { session_id, input, agent_id, system_prompt: userSystemPrompt, proposed_actions = [] } = body;
+
+    if (!session_id || !input?.trim()) {
+      return NextResponse.json({ error: "Missing session_id or input" }, { status: 400, headers: corsHeaders() });
+    }
+
+    const client = await getRedisClient();
+
+    // Load agent if provided
+    let finalSystemPrompt = userSystemPrompt;
+    if (agent_id && !finalSystemPrompt) {
+      const agentData = await client.get(`agent:${agent_id}`);
+      if (agentData) {
+        const agent = JSON.parse(agentData);
+        finalSystemPrompt = agent.system_prompt;
+      }
+    }
+
+    let sessionMemory = await client.get(`memory:${session_id}`);
+    sessionMemory = sessionMemory ? JSON.parse(sessionMemory) : { history: [], totalSpend: 0, lastUsed: null };
+
+    // Rate limit
+    const now = Date.now();
+    if (sessionMemory.lastUsed && now - new Date(sessionMemory.lastUsed).getTime() < 1000) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429, headers: corsHeaders() });
+    }
+    sessionMemory.lastUsed = new Date().toISOString();
+
+    sessionMemory.history.push({ role: "user", timestamp: new Date().toISOString(), content: input });
+    if (sessionMemory.history.length > 50) sessionMemory.history = sessionMemory.history.slice(-50);
+
+    const messages = [
+      { role: "system", content: finalSystemPrompt || "You are a helpful agent on agentic.market." },
+      ...sessionMemory.history.map(m => ({ role: m.role || "user", content: m.content }))
+    ];
+
+    let output = "LLM temporarily unavailable.";
     try {
-      await redis.connect();
-      redisStatus = "Connected";
-      await redis.ping();
+      const res = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.XAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: "grok-4-1-fast-reasoning",
+          messages,
+          temperature: 0.7,
+          max_tokens: 700,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        output = data.choices[0].message.content;
+      }
     } catch (e) {
-      redisStatus = "Connection failed: " + e.message;
+      console.error("LLM Error:", e.message);
     }
+
+    if (proposed_actions.length > 0) {
+      output += `\n\n[Actions Simulated]: ${proposed_actions.length} safe actions executed.`;
+    }
+
+    sessionMemory.history.push({ role: "assistant", timestamp: new Date().toISOString(), content: output });
+    sessionMemory.totalSpend = (sessionMemory.totalSpend || 0) + 0.005;
+
+    await client.set(`memory:${session_id}`, JSON.stringify(sessionMemory), { EX: 2592000 });
 
     return NextResponse.json({
       status: "success",
       paid: true,
       session_id,
-      output: "Debug mode active - API is responding",
-      env_status: {
-        redis: redisStatus,
-        hasXaiKey: !!process.env.XAI_API_KEY,
-        hasPayTo: !!process.env.PAY_TO_ADDRESS
-      },
-      memory_context: { total_messages: 0 }
-    });
+      agent_id,
+      output,
+      cost_estimate: "0.005 USDC",
+      actions_simulated: proposed_actions.length,
+      loop_id: `loop-${Date.now()}`,
+      timestamp: new Date().toISOString()
+    }, { headers: corsHeaders() });
 
   } catch (error) {
-    console.error("Full Error:", error);
-    return NextResponse.json({
-      error: "Server Error",
-      message: error.message,
-      stack: error.stack ? error.stack.split('\n').slice(0, 5) : null
-    }, { status: 500 });
+    console.error("Loop error:", error);
+    return NextResponse.json({ error: "Server error", message: error.message }, { status: 500, headers: corsHeaders() });
   }
 }
