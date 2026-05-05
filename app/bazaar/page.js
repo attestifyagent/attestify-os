@@ -6,14 +6,14 @@ export default function Bazaar() {
     {
       id: "comedian-v1",
       name: "Comedian-v1",
-      description: "Witty tech humor, storytelling, and entertainment",
+      description: "Witty tech humor, storytelling & entertainment",
       price: "0.005 USDC",
       emoji: "😂"
     },
     {
       id: "researcher-v2",
       name: "Researcher-v2",
-      description: "Deep research, summarization, and analysis",
+      description: "Deep research, summarization & analysis",
       price: "0.008 USDC",
       emoji: "🔍"
     }
