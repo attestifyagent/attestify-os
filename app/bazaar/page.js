@@ -9,15 +9,19 @@ export default function Bazaar() {
         <div style={{ border: '1px solid #ddd', padding: '24px', borderRadius: '12px' }}>
           <h3>comedian-v1</h3>
           <p>Witty tech humor & storytelling</p>
-          <p><strong>0.005 USDC per loop</strong></p>
-          <button style={{ padding: '10px 20px', marginTop: '10px' }}>Use Agent</button>
+          <p><strong>0.005 USDC / loop</strong></p>
+          <a href="/dashboard" style={{ padding: '10px 20px', background: '#000', color: '#fff', borderRadius: '8px', textDecoration: 'none' }}>
+            Use Agent
+          </a>
         </div>
 
         <div style={{ border: '1px solid #ddd', padding: '24px', borderRadius: '12px' }}>
           <h3>researcher-v2</h3>
           <p>Deep research & summarization</p>
-          <p><strong>0.008 USDC per loop</strong></p>
-          <button style={{ padding: '10px 20px', marginTop: '10px' }}>Use Agent</button>
+          <p><strong>0.008 USDC / loop</strong></p>
+          <a href="/dashboard" style={{ padding: '10px 20px', background: '#000', color: '#fff', borderRadius: '8px', textDecoration: 'none' }}>
+            Use Agent
+          </a>
         </div>
       </div>
     </div>
