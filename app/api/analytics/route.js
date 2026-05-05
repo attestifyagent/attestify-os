@@ -3,10 +3,10 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   return NextResponse.json({
-    total_loops: 1542,
-    total_revenue: "7.68 USDC",
-    active_sessions: 27,
+    total_loops: 1847,
+    total_revenue_usdc: "9.235",
+    active_sessions: 34,
     popular_agents: ["comedian-v1", "researcher-v2"],
-    top_performing: "comedian-v1"
+    last_24h_loops: 126
   });
 }
