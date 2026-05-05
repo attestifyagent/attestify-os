@@ -1,28 +1,55 @@
 // app/bazaar/page.js
+'use client';
+
 export default function Bazaar() {
+  const agents = [
+    {
+      id: "comedian-v1",
+      name: "Comedian-v1",
+      description: "Witty tech humor & storytelling",
+      price: "0.005 USDC",
+      emoji: "😂"
+    },
+    {
+      id: "researcher-v2",
+      name: "Researcher-v2",
+      description: "Deep research & summarization",
+      price: "0.008 USDC",
+      emoji: "🔍"
+    }
+  ];
+
+  const useAgent = (agentId) => {
+    window.open(`/dashboard?agent=${agentId}`, '_blank');
+  };
+
   return (
-    <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
-      <h1>🛍️ agentic.market Bazaar</h1>
-      <p>Browse and run production-ready agents</p>
+    <div style={{ padding: '60px 20px', maxWidth: '1200px', margin: '0 auto' }}>
+      <h1>🛍️ Attestify OS — Bazaar</h1>
+      <p>Production-ready agents powered by Attestify OS</p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginTop: '40px' }}>
-        <div style={{ border: '1px solid #ddd', padding: '24px', borderRadius: '12px' }}>
-          <h3>comedian-v1</h3>
-          <p>Witty tech humor & storytelling</p>
-          <p><strong>0.005 USDC / loop</strong></p>
-          <a href="/dashboard" style={{ padding: '10px 20px', background: '#000', color: '#fff', borderRadius: '8px', textDecoration: 'none' }}>
-            Use Agent
-          </a>
-        </div>
-
-        <div style={{ border: '1px solid #ddd', padding: '24px', borderRadius: '12px' }}>
-          <h3>researcher-v2</h3>
-          <p>Deep research & summarization</p>
-          <p><strong>0.008 USDC / loop</strong></p>
-          <a href="/dashboard" style={{ padding: '10px 20px', background: '#000', color: '#fff', borderRadius: '8px', textDecoration: 'none' }}>
-            Use Agent
-          </a>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '30px', marginTop: '40px' }}>
+        {agents.map(agent => (
+          <div key={agent.id} style={{
+            border: '1px solid #ddd',
+            borderRadius: '16px',
+            padding: '32px',
+            background: '#fff',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>{agent.emoji}</div>
+            <h3 style={{ margin: '0 0 8px 0' }}>{agent.name}</h3>
+            <p style={{ color: '#666', marginBottom: '20px' }}>{agent.description}</p>
+            <div style={{ fontWeight: 'bold', marginBottom: '24px' }}>{agent.price} per loop</div>
+            
+            <button 
+              onClick={() => useAgent(agent.id)}
+              style={{ width: '100%', padding: '14px', background: '#000', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer' }}
+            >
+              Use This Agent →
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );
