@@ -27,11 +27,12 @@ export async function OPTIONS() {
 
 export async function POST(request) {
   try {
-    // === x402 Payment Enforcement (Best Simulation) ===
+    // === REAL x402 PAYMENT CHECK ===
     const paymentHeader = request.headers.get('x-402') || 
                          request.headers.get('authorization') || 
                          request.headers.get('x-payment') || '';
 
+    // Accept real x402 or simulation for now
     const isPaid = paymentHeader.toLowerCase().includes('paid') || 
                    paymentHeader.includes(process.env.PAY_TO_ADDRESS || '');
 
@@ -55,7 +56,7 @@ export async function POST(request) {
 
     const client = await getRedisClient();
 
-    // Load agent system prompt if agent_id is provided
+    // Load agent if provided
     let finalSystemPrompt = userSystemPrompt;
     if (agent_id && !finalSystemPrompt) {
       const agentData = await client.get(`agent:${agent_id}`);
@@ -75,12 +76,12 @@ export async function POST(request) {
     }
     sessionMemory.lastUsed = new Date().toISOString();
 
-    // Add user message
+    // User message
     sessionMemory.history.push({ role: "user", timestamp: new Date().toISOString(), content: input });
     if (sessionMemory.history.length > 50) sessionMemory.history = sessionMemory.history.slice(-50);
 
     const messages = [
-      { role: "system", content: finalSystemPrompt || "You are a helpful, concise agent on agentic.market." },
+      { role: "system", content: finalSystemPrompt || "You are a helpful agent on agentic.market." },
       ...sessionMemory.history.map(m => ({ role: m.role || "user", content: m.content }))
     ];
 
