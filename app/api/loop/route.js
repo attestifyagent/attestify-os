@@ -32,7 +32,7 @@ export async function POST(request) {
                          request.headers.get('authorization') || 
                          request.headers.get('x-payment') || '';
 
-    // This is the production check (accepts real x402 or simulation)
+    // This accepts both simulation and real x402 headers
     const isPaid = paymentHeader.toLowerCase().includes('paid') || 
                    paymentHeader.includes(process.env.PAY_TO_ADDRESS || '');
 
@@ -47,7 +47,7 @@ export async function POST(request) {
       }, { status: 402, headers: corsHeaders() });
     }
 
-    // Payment passed → proceed with the loop
+    // Payment OK → Run the agent loop
     const body = await request.json();
     const { session_id, input, agent_id, system_prompt: userSystemPrompt, proposed_actions = [] } = body;
 
@@ -57,7 +57,7 @@ export async function POST(request) {
 
     const client = await getRedisClient();
 
-    // Load agent system prompt if needed
+    // Load agent if provided
     let finalSystemPrompt = userSystemPrompt;
     if (agent_id && !finalSystemPrompt) {
       const agentData = await client.get(`agent:${agent_id}`);
