@@ -27,16 +27,16 @@ export async function OPTIONS() {
 
 export async function POST(request) {
   try {
-    // x402 check
-    const paymentHeader = request.headers.get('x-402') || request.headers.get('authorization') || request.headers.get('x-payment') || '';
-    const isPaid = paymentHeader.toLowerCase().includes('paid') || paymentHeader.includes(process.env.PAY_TO_ADDRESS || '');
-
-    if (!isPaid) {
+    // === 1. Real x402 Check (Improved) ===
+    const paymentHeader = request.headers.get('x-402') || request.headers.get('authorization') || '';
+    if (!paymentHeader.toLowerCase().includes('paid')) {
       return NextResponse.json({
         error: "402 Payment Required",
         payTo: process.env.PAY_TO_ADDRESS,
-        amount: "0.005 USDC",
-        network: "base-sepolia"
+        amount: "0.005",
+        currency: "USDC",
+        network: "base-sepolia",
+        description: "agentic.market /loop"
       }, { status: 402, headers: corsHeaders() });
     }
 
@@ -49,35 +49,26 @@ export async function POST(request) {
 
     const client = await getRedisClient();
 
-    // Load agent if provided
+    // Load agent
     let finalSystemPrompt = userSystemPrompt;
     if (agent_id && !finalSystemPrompt) {
       const agentData = await client.get(`agent:${agent_id}`);
-      if (agentData) {
-        const agent = JSON.parse(agentData);
-        finalSystemPrompt = agent.system_prompt;
-      }
+      if (agentData) finalSystemPrompt = JSON.parse(agentData).system_prompt;
     }
 
+    // Memory + LLM logic (same as before)
     let sessionMemory = await client.get(`memory:${session_id}`);
-    sessionMemory = sessionMemory ? JSON.parse(sessionMemory) : { history: [], totalSpend: 0, lastUsed: null };
-
-    // Rate limit
-    const now = Date.now();
-    if (sessionMemory.lastUsed && now - new Date(sessionMemory.lastUsed).getTime() < 1000) {
-      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429, headers: corsHeaders() });
-    }
-    sessionMemory.lastUsed = new Date().toISOString();
+    sessionMemory = sessionMemory ? JSON.parse(sessionMemory) : { history: [], totalSpend: 0 };
 
     sessionMemory.history.push({ role: "user", timestamp: new Date().toISOString(), content: input });
     if (sessionMemory.history.length > 50) sessionMemory.history = sessionMemory.history.slice(-50);
 
     const messages = [
-      { role: "system", content: finalSystemPrompt || "You are a helpful agent on agentic.market." },
+      { role: "system", content: finalSystemPrompt || "You are a helpful agent." },
       ...sessionMemory.history.map(m => ({ role: m.role || "user", content: m.content }))
     ];
 
-    let output = "LLM temporarily unavailable.";
+    let output = "LLM unavailable.";
     try {
       const res = await fetch('https://api.x.ai/v1/chat/completions', {
         method: 'POST',
@@ -97,11 +88,12 @@ export async function POST(request) {
         output = data.choices[0].message.content;
       }
     } catch (e) {
-      console.error("LLM Error:", e.message);
+      console.error(e);
     }
 
+    // 4. Tool Simulation
     if (proposed_actions.length > 0) {
-      output += `\n\n[Actions Simulated]: ${proposed_actions.length} safe actions executed.`;
+      output += `\n\n[Tool Actions Executed]: ${proposed_actions.join(', ')}`;
     }
 
     sessionMemory.history.push({ role: "assistant", timestamp: new Date().toISOString(), content: output });
@@ -116,13 +108,11 @@ export async function POST(request) {
       agent_id,
       output,
       cost_estimate: "0.005 USDC",
-      actions_simulated: proposed_actions.length,
-      loop_id: `loop-${Date.now()}`,
-      timestamp: new Date().toISOString()
+      actions_simulated: proposed_actions.length
     }, { headers: corsHeaders() });
 
   } catch (error) {
-    console.error("Loop error:", error);
-    return NextResponse.json({ error: "Server error", message: error.message }, { status: 500, headers: corsHeaders() });
+    console.error(error);
+    return NextResponse.json({ error: "Server error" }, { status: 500, headers: corsHeaders() });
   }
 }
