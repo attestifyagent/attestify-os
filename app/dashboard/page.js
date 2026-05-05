@@ -6,8 +6,9 @@ export default function Dashboard() {
   const [history, setHistory] = React.useState([]);
   const [input, setInput] = React.useState("");
 
-  const runLoop = async () => {
+  const sendMessage = async () => {
     if (!input.trim()) return;
+
     const res = await fetch('/api/loop', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-402': 'paid' },
@@ -18,7 +19,14 @@ export default function Dashboard() {
       })
     });
     const data = await res.json();
-    setHistory(prev => [...prev, { input, output: data.output }]);
+    
+    setHistory(prev => [...prev, { 
+      role: "user", 
+      content: input 
+    }, { 
+      role: "assistant", 
+      content: data.output 
+    }]);
     setInput("");
   };
 
@@ -30,21 +38,26 @@ export default function Dashboard() {
       <div style={{ margin: '30px 0' }}>
         <input 
           value={input} 
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your message..."
+          onChange={e => setInput(e.target.value)}
+          onKeyPress={e => e.key === 'Enter' && sendMessage()}
+          placeholder="Type a message to the agent..."
           style={{ width: '70%', padding: '12px', fontSize: '16px' }}
-          onKeyPress={(e) => e.key === 'Enter' && runLoop()}
         />
-        <button onClick={runLoop} style={{ padding: '12px 24px', marginLeft: '10px' }}>
+        <button onClick={sendMessage} style={{ padding: '12px 24px', marginLeft: '10px' }}>
           Send
         </button>
       </div>
 
       <div>
-        {history.map((h, i) => (
-          <div key={i} style={{ border: '1px solid #ddd', padding: '15px', margin: '10px 0', borderRadius: '8px' }}>
-            <strong>You:</strong> {h.input}<br/><br/>
-            <strong>Agent:</strong> {h.output}
+        {history.map((msg, i) => (
+          <div key={i} style={{ 
+            margin: '15px 0', 
+            padding: '15px', 
+            borderRadius: '8px',
+            background: msg.role === 'user' ? '#f0f0f0' : '#e6f7ff',
+            textAlign: msg.role === 'user' ? 'right' : 'left'
+          }}>
+            <strong>{msg.role === 'user' ? 'You' : 'Agent'}:</strong> {msg.content}
           </div>
         ))}
       </div>
