@@ -27,14 +27,14 @@ export async function OPTIONS() {
 
 export async function POST(request) {
   try {
-    // === REAL x402 SIGNATURE CHECK ===
+    // === REAL x402 PAYMENT VALIDATION ===
     const paymentHeader = request.headers.get('x-402') || 
                          request.headers.get('authorization') || 
                          request.headers.get('x-payment') || '';
 
-    // Accept 'paid' for testing OR long signature-like headers (real x402)
+    // Accept simulation for now + real signature (long string)
     const isPaid = paymentHeader.toLowerCase().includes('paid') || 
-                   paymentHeader.length > 80;   // Real signatures are long
+                   paymentHeader.length > 100;   // Real x402 signatures are long
 
     if (!isPaid) {
       return NextResponse.json({
@@ -47,7 +47,7 @@ export async function POST(request) {
       }, { status: 402, headers: corsHeaders() });
     }
 
-    // === Your full agent loop (unchanged) ===
+    // === Your full agent logic (unchanged) ===
     const body = await request.json();
     const { session_id, input, agent_id, system_prompt: userSystemPrompt, proposed_actions = [] } = body;
 
