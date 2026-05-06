@@ -6,12 +6,12 @@ A production-grade loop with persistent memory, real Grok LLM, and x402 payments
 
 **Endpoint**: `POST https://attestify-os.vercel.app/api/loop`
 
-**Payment**: 0.005 USDC per loop
+**Payment**: 0.005 USDC per loop (x402)
 
-**Key Capabilities**:
-- Persistent conversation memory
-- Real Grok (xAI) responses
-- Agent registry with custom prompts
+**Capabilities**:
+- Persistent conversation memory across turns
+- Real Grok (xAI) intelligence
+- Agent registry with custom system prompts
 - Action simulation
 - Multi-turn support
 
