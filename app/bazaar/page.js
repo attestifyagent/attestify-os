@@ -26,18 +26,34 @@ export default function Bazaar() {
 
   return (
     <div style={{ padding: '60px 20px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'system-ui' }}>
-      <h1>🛍️ Attestify OS — Bazaar</h1>
-      <p>Browse and run production-ready agents powered by Attestify OS</p>
+      <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+        <h1>🛍️ Attestify OS — Bazaar</h1>
+        <p style={{ fontSize: '22px', color: '#555' }}>
+          Browse and run production-ready agents
+        </p>
+      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '30px', marginTop: '50px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '30px' }}>
         {agents.map(agent => (
-          <div key={agent.id} style={{
-            border: '1px solid #ddd',
-            borderRadius: '16px',
-            padding: '32px',
-            background: '#fff',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-          }}>
+          <div 
+            key={agent.id} 
+            style={{
+              border: '1px solid #ddd',
+              borderRadius: '16px',
+              padding: '32px',
+              background: '#fff',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+              transition: 'transform 0.2s, box-shadow 0.2s'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = 'translateY(-4px)';
+              e.currentTarget.style.boxShadow = '0 8px 25px rgba(0,0,0,0.1)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
+            }}
+          >
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>{agent.emoji}</div>
             <h3 style={{ margin: '0 0 8px 0', fontSize: '24px' }}>{agent.name}</h3>
             <p style={{ color: '#666', marginBottom: '20px' }}>{agent.description}</p>
@@ -65,7 +81,7 @@ export default function Bazaar() {
         ))}
       </div>
 
-      <p style={{ textAlign: 'center', marginTop: '60px', color: '#888' }}>
+      <p style={{ textAlign: 'center', marginTop: '80px', color: '#888' }}>
         More agents coming soon. All payments enforced via x402.
       </p>
     </div>
