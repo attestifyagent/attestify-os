@@ -2,23 +2,34 @@
 
 **Memory-First Persistent Agent Execution Loop**
 
-A production-grade loop with persistent memory, real Grok LLM, and x402 payments.
+A production-grade, stateful agent infrastructure with persistent memory, real Grok intelligence, and native x402 micropayments.
 
-**Endpoint**: `POST https://attestify-os.vercel.app/api/loop`
+**Endpoint**  
+`POST https://attestify-os.vercel.app/api/loop`
 
-**Payment**: 0.005 USDC per loop (x402)
+**Payment**  
+0.005 USDC per loop (x402 standard)
 
-**Capabilities**:
-- Persistent conversation memory across turns
-- Real Grok (xAI) intelligence
+**Key Features**
+- Persistent memory across multi-turn conversations (Redis-backed)
+- Real Grok (xAI) LLM responses
 - Agent registry with custom system prompts
-- Action simulation
-- Multi-turn support
+- Action simulation & sandboxing
+- Rate limiting & CORS support
 
-**Example Request**:
+**Example Request**
 ```json
 {
   "session_id": "conv-123",
   "input": "Tell me a joke about agents",
-  "agent_id": "comedian-v1"
+  "agent_id": "comedian-v1",
+  "proposed_actions": ["search_web"]
+}
+Response Example
+JSON{
+  "status": "success",
+  "paid": true,
+  "session_id": "conv-123",
+  "output": "Why did the AI agent go broke? ...",
+  "cost_estimate": "0.005 USDC"
 }
